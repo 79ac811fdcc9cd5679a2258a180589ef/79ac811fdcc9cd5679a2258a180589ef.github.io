@@ -1,0 +1,522 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <meta name="description"
+        content="MEMO: Memory-Augmented Model Context Optimization for Robust Multi-Turn Multi-Agent LLM Games">
+  <meta name="keywords" content="LLM, Multi-Agent, Games, Prompt Optimization, Memory, Self-Play">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>MEMO: Memory-Augmented Model Context Optimization for Robust Multi-Turn Multi-Agent LLM Games</title>
+
+  <link href="https://fonts.googleapis.com/css?family=Google+Sans|Noto+Sans|Castoro"
+        rel="stylesheet">
+
+  <link rel="stylesheet" href="./static/css/bulma.min.css">
+  <link rel="stylesheet" href="./static/css/bulma-carousel.min.css">
+  <link rel="stylesheet" href="./static/css/bulma-slider.min.css">
+  <link rel="stylesheet" href="./static/css/fontawesome.all.min.css">
+  <link rel="stylesheet"
+        href="https://cdn.jsdelivr.net/gh/jpswalsh/academicons@1/css/academicons.min.css">
+  <link rel="stylesheet" href="./static/css/index.css">
+
+  <script src="https://ajax.googleapis.com/ajax/libs/jquery/3.5.1/jquery.min.js"></script>
+  <script defer src="./static/js/fontawesome.all.min.js"></script>
+  <script src="./static/js/bulma-carousel.min.js"></script>
+  <script src="./static/js/bulma-slider.min.js"></script>
+  <script src="./static/js/index.js"></script>
+</head>
+<body>
+
+<section class="hero">
+  <div class="hero-body">
+    <div class="container is-max-desktop">
+      <div class="columns is-centered">
+        <div class="column has-text-centered">
+          <h1 class="title is-1 publication-title">MEMO: Memory-Augmented Model Context Optimization for Robust Multi-Turn Multi-Agent LLM Games</h1>
+          <div class="is-size-5 publication-authors">
+            <span class="author-block">
+              Anonymous Authors
+            </span>
+          </div>
+
+          <div class="column has-text-centered">
+            <div class="publication-links">
+              <!-- Code Link. -->
+              <span class="link-block">
+                <a href="https://anonymous.4open.science/r/5d49ab9948a9922cb5302bf7394b6ba5/README"
+                   class="external-link button is-normal is-rounded is-dark">
+                  <span class="icon">
+                      <i class="fab fa-github"></i>
+                  </span>
+                  <span>Code</span>
+                  </a>
+              </span>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+
+<section class="hero teaser">
+  <div class="container is-max-desktop">
+    <div class="hero-body">
+      <div class="columns is-centered">
+        <div class="column is-half">
+          <figure>
+            <img src="./static/images/teaser_bar.png" alt="Performance and Stability Comparison" style="width: 100%; height: auto;">
+            <figcaption class="has-text-centered" style="margin-top: 10px; font-size: 0.9em; color: #555;">
+              <b>(a) Performance and stability comparison:</b> Using GPT-4o-mini, MEMO achieves the highest mean win rate (49.5%) with the lowest RSE (6.4%).
+            </figcaption>
+          </figure>
+        </div>
+        <div class="column is-half">
+          <figure>
+            <img src="./static/images/kuhnpoker_winrate_style.png" alt="Training Efficiency on KuhnPoker" style="width: 100%; height: auto;">
+            <figcaption class="has-text-centered" style="margin-top: 10px; font-size: 0.9em; color: #555;">
+              <b>(b) Learning efficiency on KuhnPoker:</b> Using Qwen2.5-7B-Instruct, MEMO reaches 60% win rate with only 2,000 games.
+            </figcaption>
+          </figure>
+        </div>
+      </div>
+      <h2 class="subtitle has-text-centered" style="margin-top: 20px;">
+        <span class="dnerf">MEMO</span> couples memory retention and exploration to optimize LLM context for robust multi-agent gameplay.
+      </h2>
+    </div>
+  </div>
+</section>
+
+
+<section class="section">
+  <div class="container is-max-desktop">
+    <!-- Abstract. -->
+    <div class="columns is-centered has-text-centered">
+      <div class="column is-four-fifths">
+        <h2 class="title is-3">Abstract</h2>
+        <div class="content has-text-justified">
+          <p>
+            Multi-turn, multi-agent LLM game evaluations often exhibit substantial run-to-run variance. In long-horizon interactions, small early deviations compound across turns and are amplified by multi-agent coupling, biasing win rate estimates and destabilizing comparative rankings across repeated tournaments. Prompt choice exacerbates this by inducing different effective policies and interaction dynamics.
+          </p>
+          <p>
+            We address both instability and underperformance in interactive games with <b>MEMO</b> (<b>Me</b>mory-augmented <b>MO</b>del context optimization), a self-play framework that treats inference-time context as an optimizable, agentic object by coupling <b>retention</b> and <b>exploration</b>. Retention maintains a persistent memory bank that distills self-play trajectories into structured insights, consolidates them via CRUD-style updates, and injects them as priors during subsequent play. Exploration performs tournament-style prompt evolution with uncertainty-aware selection via TrueSkill, and uses prioritized replay to revisit vital states for sample-efficient coverage.
+          </p>
+          <p>
+            Across five text-based games, MEMO raises mean win rate from <b>24.9% → 49.5%</b> for GPT-4o-mini and <b>21.7% → 44.3%</b> for Qwen-2.5-7B-Instruct using a mere budget of 2000 self-play games per task; reducing run-to-run dispersion of end-to-end outcomes and yielding more reliable rankings under prompt stratification.
+          </p>
+        </div>
+      </div>
+    </div>
+    <!--/ Abstract. -->
+  </div>
+</section>
+
+
+<section class="section">
+  <div class="container is-max-desktop">
+    <div class="columns is-centered has-text-centered">
+      <div class="column is-full-width">
+        <h2 class="title is-3">The MEMO Framework</h2>
+
+        <div class="content has-text-justified" style="margin-bottom: 30px;">
+          <p>
+            MEMO is an iterative procedure that optimizes prompts and game context to maximize performance and stability in two-player Markov games. A key goal is to make prompt optimization less run-dependent by accumulating reusable priors in a shared memory bank and reusing them across generations.
+          </p>
+        </div>
+
+        <div style="margin: 40px 0;">
+          <img src="./static/images/COPER_pipeline_v6.png" alt="MEMO Framework Pipeline" style="width: 100%; max-width: 950px; margin: 0 auto; display: block;">
+        </div>
+
+        <div class="content has-text-justified" style="margin-top: 30px;">
+          <p>
+            At each optimization generation, new candidate contexts are proposed through two strategies: random proposals and memory-augmented updates. These candidates are then evaluated via self-play, and the best-performing candidates are used to update the pool for the next generation. To encourage exploration and mitigate redundant early moves, a prioritized replay module is introduced, enabling efficient search for robust prompts and priors within a single game.
+          </p>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+
+<section class="section">
+  <div class="container is-max-desktop">
+    <!-- Key Components -->
+    <div class="columns is-centered">
+      <div class="column is-full-width">
+        <h2 class="title is-3">Key Components</h2>
+
+        <h3 class="title is-4">1. Context Optimization Loop</h3>
+        <div class="content has-text-justified">
+          <p>
+            MEMO maintains a context population evaluated through self-play. Selection uses a conservative TrueSkill objective that favors contexts winning reliably rather than due to noisy trajectories. The population evolves through two proposal operators:
+          </p>
+          <ul>
+            <li><b>Random proposals:</b> Introduce novel variations to encourage exploration by sampling a playstyle and applying small edits to the base context</li>
+            <li><b>Memory-augmented updates:</b> Incorporate insights extracted from trajectory reflections into targeted prompt edits</li>
+          </ul>
+        </div>
+
+        <h3 class="title is-4">2. Memory Bank (Retention)</h3>
+        <div class="content has-text-justified">
+          <p>
+            MEMO maintains a shared memory bank that persists across optimization generations. After each generation, completed self-play trajectories are analyzed to extract structured insights such as rule clarifications, legality constraints, and strategy priors. These insights are merged using three database-style operations:
+          </p>
+          <ul>
+            <li><b>Add:</b> If a new insight is not similar to any existing insight, it is added directly</li>
+            <li><b>Remove:</b> If a new insight conflicts with an existing one, both are removed to avoid misleading the agent</li>
+            <li><b>Edit:</b> If a new insight is similar to an existing one, they are merged to be more actionable</li>
+          </ul>
+        </div>
+
+        <h3 class="title is-4">3. Prioritized Replay (Exploration)</h3>
+        <div class="content has-text-justified">
+          <p>
+            To improve trajectory coverage, MEMO maintains a replay buffer that stores trajectory prefixes together with environment seeds for reproduction. The buffer biases sampling toward infrequently encountered trajectories using inverse-frequency scoring, encouraging a more diverse and balanced pool of prompt-level insights. A gating parameter determines how often games are initialized from the replay buffer rather than played afresh.
+          </p>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+
+<section class="section" style="background-color: #f5f5f5;">
+  <div class="container is-max-desktop">
+    <div class="columns is-centered">
+      <div class="column is-full-width">
+        <h2 class="title is-3">Results</h2>
+
+        <div class="content has-text-justified">
+          <p>
+            MEMO achieves substantial improvements across five text-based games with both GPT-4o-mini and Qwen-2.5-7B-Instruct models. The framework demonstrates strong gains in negotiation games and competitive results in imperfect-information settings.
+          </p>
+        </div>
+
+        <h3 class="title is-4">Comparison with Baselines</h3>
+        <div class="content">
+          <div style="overflow-x: auto;">
+            <table class="table is-bordered is-striped is-narrow is-hoverable" style="margin: 0 auto; background-color: white; font-size: 0.85em;">
+              <thead>
+                <tr>
+                  <th>Type</th>
+                  <th>Optimizer</th>
+                  <th>SimpleNegotiation</th>
+                  <th>TwoDollar</th>
+                  <th>KuhnPoker</th>
+                  <th>Briscola</th>
+                  <th>SimpleTak</th>
+                  <th>Mean Win Rate</th>
+                  <th>Mean RSE</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr style="background-color: #e8f4f8;">
+                  <td colspan="9"><strong>GPT-4o-mini</strong></td>
+                </tr>
+                <tr style="background-color: #e8f5ec;">
+                  <td rowspan="3">Static</td>
+                  <td><b>baseline</b></td>
+                  <td>31.3%</td>
+                  <td>32.2%</td>
+                  <td>39.1%</td>
+                  <td>0.3%</td>
+                  <td>21.4%</td>
+                  <td>25.1%</td>
+                  <td>44.9%</td>
+                </tr>
+                <tr style="background-color: #e8f5ec;">
+                  <td>CoT</td>
+                  <td>27.8%</td>
+                  <td>25.7%</td>
+                  <td>46.5%</td>
+                  <td>30.4%</td>
+                  <td>24.8%</td>
+                  <td>31.1%</td>
+                  <td>28.7%</td>
+                </tr>
+                <tr style="background-color: #e8f5ec;">
+                  <td>ToT</td>
+                  <td>26.3%</td>
+                  <td>27.0%</td>
+                  <td>51.7%</td>
+                  <td>45.1%</td>
+                  <td>23.8%</td>
+                  <td>34.8%</td>
+                  <td>36.5%</td>
+                </tr>
+                <tr style="background-color: #fbf2e6;">
+                  <td rowspan="3">Prompt</td>
+                  <td>TextGrad</td>
+                  <td>42.0%</td>
+                  <td>44.6%</td>
+                  <td><b>55.6%</b></td>
+                  <td>7.1%</td>
+                  <td>23.6%</td>
+                  <td>34.6%</td>
+                  <td>18.4%</td>
+                </tr>
+                <tr style="background-color: #fbf2e6;">
+                  <td>MIPRO</td>
+                  <td>38.4%</td>
+                  <td>50.9%</td>
+                  <td>55.1%</td>
+                  <td>19.7%</td>
+                  <td>19.1%</td>
+                  <td>36.7%</td>
+                  <td>12.4%</td>
+                </tr>
+                <tr style="background-color: #fbf2e6;">
+                  <td>GEPA</td>
+                  <td>36.8%</td>
+                  <td>40.4%</td>
+                  <td>52.2%</td>
+                  <td>3.3%</td>
+                  <td>26.9%</td>
+                  <td>32.0%</td>
+                  <td>11.3%</td>
+                </tr>
+                <tr style="background-color: #dcebff;">
+                  <td>Ours</td>
+                  <td><b>MEMO</b></td>
+                  <td><b>54.9%</b></td>
+                  <td><b>52.4%</b></td>
+                  <td><b>55.6%</b></td>
+                  <td><b>42.7%</b></td>
+                  <td><b>41.8%</b></td>
+                  <td><b>49.5%</b></td>
+                  <td><b>6.4%</b></td>
+                </tr>
+
+                <tr style="background-color: #e8f4f8;">
+                  <td colspan="9"><strong>Qwen2.5-7B-Instruct</strong></td>
+                </tr>
+                <tr style="background-color: #e8f5ec;">
+                  <td rowspan="3">Static</td>
+                  <td><b>baseline</b></td>
+                  <td>24.0%</td>
+                  <td>17.1%</td>
+                  <td>45.3%</td>
+                  <td>2.8%</td>
+                  <td>15.1%</td>
+                  <td>20.9%</td>
+                  <td>30.1%</td>
+                </tr>
+                <tr style="background-color: #e8f5ec;">
+                  <td>CoT</td>
+                  <td>23.8%</td>
+                  <td>18.7%</td>
+                  <td>42.0%</td>
+                  <td>25.8%</td>
+                  <td>13.6%</td>
+                  <td>24.8%</td>
+                  <td>43.4%</td>
+                </tr>
+                <tr style="background-color: #e8f5ec;">
+                  <td>ToT</td>
+                  <td>27.1%</td>
+                  <td>20.7%</td>
+                  <td>42.2%</td>
+                  <td>22.7%</td>
+                  <td>15.1%</td>
+                  <td>25.6%</td>
+                  <td>40.2%</td>
+                </tr>
+                <tr style="background-color: #fbf2e6;">
+                  <td rowspan="3">Prompt</td>
+                  <td>TextGrad</td>
+                  <td>37.1%</td>
+                  <td>29.3%</td>
+                  <td>52.8%</td>
+                  <td>7.1%</td>
+                  <td>22.4%</td>
+                  <td>29.9%</td>
+                  <td>21.7%</td>
+                </tr>
+                <tr style="background-color: #fbf2e6;">
+                  <td>MIPRO</td>
+                  <td>42.4%</td>
+                  <td>47.5%</td>
+                  <td>53.8%</td>
+                  <td>2.2%</td>
+                  <td>20.9%</td>
+                  <td>33.4%</td>
+                  <td>7.3%</td>
+                </tr>
+                <tr style="background-color: #fbf2e6;">
+                  <td>GEPA</td>
+                  <td>34.4%</td>
+                  <td>31.7%</td>
+                  <td>55.8%</td>
+                  <td>3.3%</td>
+                  <td>19.3%</td>
+                  <td>28.8%</td>
+                  <td>14.8%</td>
+                </tr>
+                <tr style="background-color: #f7e9e5;">
+                  <td rowspan="2">RL</td>
+                  <td>UnstableBaseline</td>
+                  <td>41.1%</td>
+                  <td>30.4%</td>
+                  <td>52.7%</td>
+                  <td><b>53.3%</b></td>
+                  <td><b>47.3%</b></td>
+                  <td><b>45.0%</b></td>
+                  <td>43.3%</td>
+                </tr>
+                <tr style="background-color: #f7e9e5;">
+                  <td>SPIRAL</td>
+                  <td>45.7%</td>
+                  <td>--</td>
+                  <td>56.7%</td>
+                  <td>--</td>
+                  <td>32.7%</td>
+                  <td>--</td>
+                  <td>--</td>
+                </tr>
+                <tr style="background-color: #dcebff;">
+                  <td>Ours</td>
+                  <td><b>MEMO</b></td>
+                  <td><b>48.0%</b></td>
+                  <td><b>48.4%</b></td>
+                  <td><b>60.0%</b></td>
+                  <td>31.1%</td>
+                  <td>34.0%</td>
+                  <td>44.3%</td>
+                  <td><b>6.1%</b></td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+          <p style="margin-top: 15px; text-align: center; font-size: 0.9em; color: #666;">
+            Benchmark results across multiple tasks. Each win rate is the mean across three evaluation models. Green: Static prompting; Orange: Prompt optimization; Red: RL pipelines; Blue: Our method.
+          </p>
+        </div>
+
+        <div class="content has-text-justified" style="margin-top: 30px;">
+          <h3 class="title is-4">Key Findings</h3>
+          <ul>
+            <li><b>Large improvements:</b> MEMO raises mean win rate from 24.9% → 49.5% (GPT-4o-mini) and 21.7% → 44.3% (Qwen-2.5-7B-Instruct)</li>
+            <li><b>Sample efficiency:</b> MEMO requires only <b>2,000</b> games per task - <b>19x fewer</b> than UnstableBaseline's 38,000 games</li>
+            <li><b>Reduced variance:</b> MEMO achieves 6.4% RSE compared to MIPRO's 12.4%, significantly reducing run-to-run dispersion</li>
+            <li><b>Outperforms prompt optimization:</b> MEMO outperforms TextGrad, MIPRO, and GEPA by 14.9%, 12.8%, and 17.5% respectively on GPT-4o-mini</li>
+            <li><b>Competitive with RL:</b> Achieves comparable performance to RL methods while being far more efficient</li>
+          </ul>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+
+<section class="section">
+  <div class="container is-max-desktop">
+    <div class="columns is-centered">
+      <div class="column is-full-width">
+        <h2 class="title is-3">Cross-Model Context Transfer</h2>
+
+        <div class="content has-text-justified">
+          <p>
+            We test whether a context learned via self-play with GPT-4o-mini can generalize across models. Specifically, we apply the learned prompts and retained experience produced by MEMO for GPT-4o-mini to Gemini-2.5-Flash-Lite and Grok-4-fast-non-reasoning.
+          </p>
+        </div>
+
+        <div class="columns is-centered" style="margin-top: 20px;">
+          <div class="column is-two-thirds">
+            <img src="./static/images/context_transfer_actual_values_with_means.png" alt="Cross-Model Context Transfer" style="width: 100%; border: 1px solid #ddd; padding: 10px;">
+          </div>
+        </div>
+
+        <div class="content has-text-justified" style="margin-top: 20px;">
+          <p>
+            Context learned from GPT-4o-mini transfers effectively to Gemini-2.5-Flash-Lite, yielding consistent improvements across the three environments. The gains are most pronounced in TwoDollar, where Gemini exhibits a substantial increase in win rate when augmented with the 4o-mini context.
+          </p>
+          <p>
+            In contrast, the same context does not yield consistent benefits for Grok-4-fast-non-reasoning, as seen in the performance drops in Briscola and KuhnPoker. This suggests that learned contexts capture reusable strategic structures that can generalize across certain model families, but effectiveness depends on how the target model processes and acts on the contextual information for gameplay.
+          </p>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+
+<section class="section" style="background-color: #f5f5f5;">
+  <div class="container is-max-desktop">
+    <div class="columns is-centered">
+      <div class="column is-full-width">
+        <h2 class="title is-3">Token Efficiency</h2>
+
+        <div class="content">
+          <div style="overflow-x: auto;">
+            <table class="table is-bordered is-striped is-narrow is-hoverable" style="margin: 0 auto; background-color: white;">
+              <thead>
+                <tr>
+                  <th>Optimizer</th>
+                  <th>SimpleNegotiation</th>
+                  <th>KuhnPoker</th>
+                  <th>SimpleTak</th>
+                  <th>Avg. Tokens</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr>
+                  <td>TextGrad</td>
+                  <td>842</td>
+                  <td>986</td>
+                  <td>938</td>
+                  <td>922</td>
+                </tr>
+                <tr>
+                  <td>MIPRO</td>
+                  <td>145,864</td>
+                  <td>162,084</td>
+                  <td>754,534</td>
+                  <td>354,161</td>
+                </tr>
+                <tr>
+                  <td>GEPA</td>
+                  <td>110,325</td>
+                  <td>119,365</td>
+                  <td>111,907</td>
+                  <td>113,865</td>
+                </tr>
+                <tr style="background-color: #dcebff;">
+                  <td><b>MEMO (Ours)</b></td>
+                  <td>87,364</td>
+                  <td>94,160</td>
+                  <td>89,152</td>
+                  <td><b>90,575</b></td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+          <p style="margin-top: 15px; text-align: center; font-size: 0.9em; color: #666;">
+            Output token cost for each prompt optimization method. MEMO uses only 91K tokens on average - about one-quarter of MIPRO (354K) and 20% fewer than GEPA (113K).
+          </p>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+
+<footer class="footer">
+  <div class="container">
+    <div class="columns is-centered">
+      <div class="column is-8">
+        <div class="content">
+          <p style="text-align: center;">
+            This website template is borrowed from <a href="https://github.com/nerfies/nerfies.github.io">Nerfies</a>,
+            licensed under a <a rel="license" href="http://creativecommons.org/licenses/by-sa/4.0/">Creative
+            Commons Attribution-ShareAlike 4.0 International License</a>.
+          </p>
+        </div>
+      </div>
+    </div>
+  </div>
+</footer>
+
+</body>
+</html>
